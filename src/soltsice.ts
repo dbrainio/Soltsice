@@ -145,6 +145,10 @@ export module soltsice {
         return {typesNames: inputsString, names: inputsNamesString};
     }
 
+    function isPrivate(abi: W3.ABIDefinition): boolean {
+        return typeof abi.name === 'string' ? abi.name.startsWith('__') : false;
+    }
+
     function processAbi(abi: W3.ABIDefinition): string {
 
         let name = abi.name;
@@ -257,7 +261,10 @@ export module soltsice {
         let ctor = abis.filter(a => a.type === 'constructor');
         let ctorParams = ctor.length === 1 ? processCtor(ctor[0]) : {typesNames: '', names: ''};
 
-        let methodsBody = abis.filter(a => a.type === 'function').map(processAbi).join('');
+        let methodsBody = abis
+        .filter(a => a.type === 'function')
+        .filter((abi) => !isPrivate(abi))
+        .map(processAbi).join('');
 
         let bnImport = ``;
         if (ctorParams.typesNames.indexOf('BigNumber') >= 0 || methodsBody.indexOf('BigNumber') >= 0) {
