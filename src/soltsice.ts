@@ -79,36 +79,40 @@ export module soltsice {
     }
 
     function abiTypeToTypeName(abiType?: string, isReturnType?: boolean) {
-        let outputType: string = '';
-        if (!abiType) {
-            outputType = 'void';
-        } else if (abiType.startsWith('uint') || abiType.startsWith('int')) {
-            outputType = isReturnType ? 'BigNumber' : 'BigNumber | number';
-        } else if (abiType.startsWith('bytes')) {
-            outputType = 'string';
-        } else {
-            //     export type ABIDataTypes = 'uint256' | 'boolean' | 'string' | 'bytes' | string; // TODO complete list
-            switch (abiType) {
-                case 'bool':
-                    outputType = 'boolean';
-                    break;
+        
+        let _abiTypeToTypeName = (abiType?: string, isReturnType?: boolean) => {
+            let outputType: string[];
+            let arrayTypeRegex = /^(.+)\[\d*\]$/;
+            let array: RegExpExecArray | null;
+            if (!abiType) {
+                outputType = ['void'];
+            } else if (array = arrayTypeRegex.exec(abiType)) {
+                outputType = _abiTypeToTypeName(array[1], isReturnType).map(x => x+'[]')
+            } else if (abiType.startsWith('uint') || abiType.startsWith('int')) {
+                outputType = isReturnType ? ['BigNumber'] : ['BigNumber', 'number'];
+            } else if (abiType.startsWith('bytes')) {
+                outputType = ['string'];
+            } else {
+                //     export type ABIDataTypes = 'uint256' | 'boolean' | 'string' | 'bytes' | string; // TODO complete list
+                switch (abiType) {
+                    case 'bool':
+                        outputType = ['boolean'];
+                        break;
 
-                case 'string':
-                case 'address':
-                    outputType = 'string';
-                    break;
+                    case 'string':
+                    case 'address':
+                        outputType = ['string'];
+                        break;
 
-                case 'string[]':
-                case 'address[]':
-                    outputType = 'string[]';
-                    break;
-
-                default:
-                    console.warn('Not implemented ABI type, using `any` instead: ', abiType);
-                    outputType = 'any';
+                    default:
+                        console.warn('Not implemented ABI type, using `any` instead: ', abiType);
+                        outputType = ['any'];
+                }
             }
+            return outputType;
         }
-        return outputType;
+
+        return _abiTypeToTypeName(abiType, isReturnType).join(' | ')
     }
 
     function processCtor(abi: W3.ABIDefinition): { typesNames: string, names: string } {
@@ -123,7 +127,7 @@ export module soltsice {
             inputsString = '';
             inputsNamesString = '';
         }
-        return {typesNames: inputsString, names: inputsNamesString};
+        return { typesNames: inputsString, names: inputsNamesString };
     }
 
     function processInputs(abi: W3.ABIDefinition): { typesNames: string, names: string } {
@@ -132,14 +136,14 @@ export module soltsice {
         let inputsString: string;
         let inputsNamesString: string;
         if (inputs && inputs.length > 0) {
-            inputs = inputs.map((i, idx) => i.name === '' ? Object.assign(i, {name: ('_' + idx)}) : i);
+            inputs = inputs.map((i, idx) => i.name === '' ? Object.assign(i, { name: ('_' + idx) }) : i);
             inputsString = inputs.map(i => i.name + ': ' + abiTypeToTypeName(i.type)).join(', '); // comma for tx params
             inputsNamesString = inputs.map(i => i.name).join(', ');
         } else {
             inputsString = '';
             inputsNamesString = '';
         }
-        return {typesNames: inputsString, names: inputsNamesString};
+        return { typesNames: inputsString, names: inputsNamesString };
     }
 
     function processAbi(abi: W3.ABIDefinition): string {
@@ -218,7 +222,7 @@ export module soltsice {
             }
         });
     `
-        ;
+            ;
 
         return methodsBody;
     }
@@ -242,7 +246,7 @@ export module soltsice {
         // is executed once.A constructor is optional.Only one constructor is allowed, and this means
         // overloading is not supported.
         let ctor = abis.filter(a => a.type === 'constructor');
-        let ctorParams = ctor.length === 1 ? processCtor(ctor[0]) : {typesNames: '', names: ''};
+        let ctorParams = ctor.length === 1 ? processCtor(ctor[0]) : { typesNames: '', names: '' };
 
         let methodsBody = abis.filter(a => a.type === 'function').map(processAbi).join('');
 
