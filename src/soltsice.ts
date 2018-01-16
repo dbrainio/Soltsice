@@ -79,16 +79,19 @@ export module soltsice {
     }
 
     function abiTypeToTypeName(abiType?: string, isReturnType?: boolean) {
-        
-        let _abiTypeToTypeName = (abiType?: string, isReturnType?: boolean) => {
-            let outputType: string[];
-            let arrayTypeRegex = /^(.+)\[\d*\]$/;
-            let array: RegExpExecArray | null;
-            if (!abiType) {
-                outputType = ['void'];
-            } else if (array = arrayTypeRegex.exec(abiType)) {
-                outputType = _abiTypeToTypeName(array[1], isReturnType).map(x => x+'[]')
-            } else if (abiType.startsWith('uint') || abiType.startsWith('int')) {
+
+        let outputType: string[];
+        let arrayPosition = -1;
+
+        if (!abiType) {
+            outputType = ['void'];
+        } else {
+            arrayPosition = abiType.indexOf('[')
+            if(arrayPosition >= 0){
+                abiType = abiType.substring(0, arrayPosition)
+            }
+
+            if (abiType.startsWith('uint') || abiType.startsWith('int')) {
                 outputType = isReturnType ? ['BigNumber'] : ['BigNumber', 'number'];
             } else if (abiType.startsWith('bytes')) {
                 outputType = ['string'];
@@ -109,10 +112,13 @@ export module soltsice {
                         outputType = ['any'];
                 }
             }
-            return outputType;
         }
 
-        return _abiTypeToTypeName(abiType, isReturnType).join(' | ')
+        if(arrayPosition >= 0){
+            outputType = outputType.map(x => x + '[]')
+        }
+
+        return outputType.join(' | ');
     }
 
     function processCtor(abi: W3.ABIDefinition): { typesNames: string, names: string } {
